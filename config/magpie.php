@@ -29,6 +29,15 @@ return [
     // Fraction of requests, jobs and commands to trace for performance monitoring. Null or 0 disables tracing.
     'traces_sample_rate' => env('MAGPIE_TRACES_SAMPLE_RATE') === null ? null : (float) env('MAGPIE_TRACES_SAMPLE_RATE'),
 
+    // Count web requests as sessions so Magpie can show crash-free sessions and adoption per release. A request
+    // that ends in an uncaught exception counts as crashed. Counts are kept in the cache and sent as one small
+    // summary per minute, never one request per session. Needs a release (MAGPIE_RELEASE or a git checkout).
+    // Use a cache store shared by all your servers, or each server reports its own share.
+    'sessions' => [
+        'enabled' => (bool) env('MAGPIE_SESSIONS', true),
+        'store' => env('MAGPIE_SESSIONS_CACHE_STORE'),
+    ],
+
     // Attach the authenticated user and client IP addresses. Credentials and session headers are always removed.
     'send_default_pii' => (bool) env('MAGPIE_SEND_DEFAULT_PII', false),
 

@@ -39,6 +39,17 @@ class TracingTest extends TestCase
         $this->assertSame('GET /ok', $transaction['transaction']);
     }
 
+    public function test_an_error_inside_a_trace_keeps_the_runtime_and_os_contexts(): void
+    {
+        $this->magpie()->startTransaction('GET /ok');
+        $this->magpie()->captureMessage('during');
+        $event = $this->lastEvent();
+
+        $this->assertArrayHasKey('trace', $event['contexts']);
+        $this->assertSame(PHP_VERSION, $event['contexts']['runtime']['version']);
+        $this->assertSame(PHP_OS_FAMILY, $event['contexts']['os']['name']);
+    }
+
     public function test_an_upstream_unsampled_decision_is_respected(): void
     {
         $this->withHeader(TraceHeader::NAME, str_repeat('a', 32).'-'.str_repeat('b', 16).'-0')->get('/ok')->assertOk();

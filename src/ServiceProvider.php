@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use InvalidArgumentException;
 use Magpie\Laravel\Console\TestCommand;
+use Magpie\Laravel\Http\SessionMiddleware;
 use Magpie\Laravel\Http\TracingMiddleware;
 use Magpie\Laravel\Listeners\CacheSubscriber;
 use Magpie\Laravel\Listeners\EventsSubscriber;
@@ -22,6 +23,7 @@ use Magpie\Laravel\Transport\HttpTransport;
 use Magpie\Laravel\Transport\QueuedTransport;
 use Magpie\Laravel\Transport\Transport;
 use Psr\Http\Message\RequestInterface;
+use Throwable;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -43,7 +45,7 @@ class ServiceProvider extends BaseServiceProvider
             // Octane swaps the container per request, so always read the current one.
             $current = fn (): Application => ($instance = Container::getInstance()) instanceof Application ? $instance : $app;
 
-            return new Magpie($options, $this->transport($app, $options), fn () => RequestContext::resolve($current(), $pii));
+            return new Magpie($options, $this->transport($app, $options), fn () => RequestContext::resolve($current(), $pii), $this->sessions($app, $options));
         });
 
         $this->app->alias(Magpie::class, 'magpie');
@@ -70,20 +72,27 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->terminating(fn () => $magpie->flush());
         register_shutdown_function(fn () => $magpie->flush());
 
+        $this->prependMiddleware(SessionMiddleware::class, $magpie->sessionsEnabled());
+
         if ((float) $magpie->option('traces_sample_rate', 0) > 0) {
             $this->registerTracing($magpie);
         }
     }
 
-    private function registerTracing(Magpie $magpie): void
+    private function prependMiddleware(string $middleware, bool $when = true): void
     {
-        if ($this->app->bound(HttpKernel::class)) {
+        if ($when && $this->app->bound(HttpKernel::class)) {
             $kernel = $this->app->make(HttpKernel::class);
 
             if (method_exists($kernel, 'prependMiddleware')) {
-                $kernel->prependMiddleware(TracingMiddleware::class);
+                $kernel->prependMiddleware($middleware);
             }
         }
+    }
+
+    private function registerTracing(Magpie $magpie): void
+    {
+        $this->prependMiddleware(TracingMiddleware::class);
 
         // Jobs dispatched during a traced request continue its trace in the worker.
         if (class_exists(Queue::class)) {
@@ -115,6 +124,28 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         return false;
+    }
+
+    /**
+     * Counts web requests for crash-free sessions. Off when disabled, or when there is no release to count them against.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    private function sessions(Application $app, array $options): ?Sessions
+    {
+        $release = trim((string) ($options['release'] ?? ''));
+
+        if (! ($options['sessions']['enabled'] ?? true) || $release === '') {
+            return null;
+        }
+
+        try {
+            $cache = $app['cache']->store($options['sessions']['store'] ?? null);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return new Sessions($cache, $release, (string) ($options['environment'] ?? 'production'));
     }
 
     /** @param  array<string, mixed>  $options */

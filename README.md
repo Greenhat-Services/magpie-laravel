@@ -43,6 +43,7 @@ Publish the config if you need to change defaults: `php artisan vendor:publish -
 - **Breadcrumbs**: log messages, SQL queries, outgoing HTTP client calls, cache hits and misses, queue jobs and console commands leading up to an error.
 - **Performance**: sampled requests, jobs and commands become transactions with a span per SQL query and per Laravel HTTP client call (`MAGPIE_TRACES_SAMPLE_RATE`). An error raised during a transaction links to it.
 - **Distributed tracing**: traced requests send a `magpie-trace` header on outgoing HTTP client calls and embed it in queued job payloads, so a job or another Magpie-instrumented service continues the same trace. Incoming `magpie-trace` headers are honoured.
+- **Release health**: every web request counts as a session, and one that ends in an uncaught exception counts as crashed, so Magpie can show crash-free sessions and adoption per release. Counts are kept in your cache and sent as one small summary per minute, never one request per session. Needs a release, and a cache store shared by your servers (`sessions.store`). Health checks and `ignore_transactions` are not counted; jobs and commands are not sessions.
 - **Release**: `MAGPIE_RELEASE`, or the git commit of the checkout when a `.git` directory is present.
 - **Queue workers, Octane and commands**: events are flushed after every job, request or command, and each unit of work starts with a clean scope. Jobs run on the `sync` driver stay inside the surrounding request as a span.
 
@@ -114,6 +115,7 @@ Each event becomes a `Magpie\Laravel\Jobs\SendPayload` job. The SDK never traces
 | `environment` | `MAGPIE_ENVIRONMENT` | `APP_ENV` | |
 | `release` | `MAGPIE_RELEASE` | git commit | Version string; falls back to the checkout's commit. |
 | `sample_rate` | `MAGPIE_SAMPLE_RATE` | `1.0` | Fraction of errors sent. |
+| `sessions.*` | `MAGPIE_SESSIONS`, `MAGPIE_SESSIONS_CACHE_STORE` | on | Count requests for crash-free sessions. `store` is the cache store holding the counts (default: your default store). |
 | `traces_sample_rate` | `MAGPIE_TRACES_SAMPLE_RATE` | none | Fraction of requests, jobs and commands traced. |
 | `send_default_pii` | `MAGPIE_SEND_DEFAULT_PII` | `false` | Attach the user, client IP headers and `REMOTE_ADDR`. |
 | `ignore_exceptions` | | framework noise | Classes and interfaces never reported, subclasses included. |
@@ -135,6 +137,7 @@ This is the contract between the SDK and a Magpie server.
 - JSON body, gzip-compressed (`Content-Encoding: gzip`) above 4 KB. Bodies are kept under 1 MB: breadcrumbs, spans, extra and source context are dropped to fit, and an event that is still too large is not sent.
 - Errors carry `event_id`, `timestamp`, `platform`, `level`, `environment`, `release`, `server_name`, `exception.values[]` (`type`, `value`, `mechanism`, `stacktrace.frames[]` oldest first), `message`, `tags`, `extra`, `user`, `request`, `contexts`, `breadcrumbs`, `transaction` and `sdk`. An error raised inside a trace also carries `contexts.trace.trace_id` and `span_id`.
 - Transactions carry `type: "transaction"`, `transaction`, `start_timestamp`, `timestamp`, `contexts.trace` (`trace_id`, `span_id`, `parent_span_id` when continuing a trace, `op`, `status`, `http.status_code`, `dropped_spans` when the span cap was hit) and `spans[]` (`span_id`, `parent_span_id`, `op`, `description`, `start_timestamp`, `timestamp`, `data`).
+- Sessions are `POST .../sessions` with `type: "sessions"`, `release`, `environment`, `sdk` and `aggregates[]`: one `{minute, exited, errored, crashed}` per finished minute, where `minute` is the Unix time of the minute and the three counts are sessions that ended clean, with a handled error, or crashed by an uncaught exception. A minute is sent once.
 - Distributed tracing header `magpie-trace: <32 hex trace id>-<16 hex span id>-<0|1 sampled>`. The same value travels in queued job payloads under `magpie_trace`.
 
 Delivery never throws. `Magpie::flush()` returns false when any payload was rejected.

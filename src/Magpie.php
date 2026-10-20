@@ -47,14 +47,19 @@ class Magpie
     /** @var array<string, mixed>|null */
     private ?array $transaction = null;
 
+    /** The outcome so far of the request being counted as a session, or null when none is. */
+    private ?string $session = null;
+
     /**
      * @param  array<string, mixed>  $options  The config/magpie.php array.
      * @param  Closure(): array<string, mixed>|null  $contextResolver  Returns request, user and contexts to merge into each event.
+     * @param  Sessions|null  $sessions  Counts requests for crash-free session reporting. Null disables it.
      */
     public function __construct(
         private readonly array $options,
         private readonly ?Transport $transport,
         private readonly ?Closure $contextResolver = null,
+        private readonly ?Sessions $sessions = null,
     ) {
         $this->scope = new Scope;
         $this->reported = new WeakMap;
@@ -111,6 +116,7 @@ class Magpie
         $this->scope = new Scope;
         $this->scopeStack = [];
         $this->transaction = null;
+        $this->session = null;
     }
 
     /** @param  array<string, mixed>  $breadcrumb  message, category, level, type, data */
@@ -127,7 +133,14 @@ class Magpie
      */
     public function captureException(Throwable $exception, array $hint = []): ?string
     {
-        if (! $this->enabled() || $this->isIgnored($exception) || isset($this->reported[$exception]) || ! $this->sampled()) {
+        if (! $this->enabled() || $this->isIgnored($exception)) {
+            return null;
+        }
+
+        // The session counts the failure even when the event is sampled out or already reported.
+        $this->markSession(($hint['handled'] ?? true) === false ? Sessions::CRASHED : Sessions::ERRORED);
+
+        if (isset($this->reported[$exception]) || ! $this->sampled()) {
             return null;
         }
 
@@ -171,7 +184,58 @@ class Magpie
             }
         }
 
+        if ($this->transport !== null && $this->sessions !== null && ! $this->sessions->flush($this->transport)) {
+            $delivered = false;
+        }
+
         return $delivered;
+    }
+
+    // ------------------------------------------------------------------ sessions
+
+    public function sessionsEnabled(): bool
+    {
+        return $this->enabled() && $this->sessions !== null;
+    }
+
+    /**
+     * Begin counting a web request as a release-health session. Health checks and anything in
+     * `ignore_transactions` are not counted. Returns false when the request is not a session.
+     */
+    public function startSession(string $name): bool
+    {
+        $this->session = null;
+
+        if (! $this->enabled() || $this->sessions === null || $this->transactionIgnored($name)) {
+            return false;
+        }
+
+        $this->session = Sessions::EXITED;
+
+        return true;
+    }
+
+    /** Finish the session: it ended clean, with a handled error, or crashed by an uncaught exception. */
+    public function endSession(): void
+    {
+        $outcome = $this->session;
+        $this->session = null;
+
+        if ($outcome !== null) {
+            $this->sessions?->record($outcome);
+        }
+    }
+
+    /** An error can only make a session worse: clean, then errored, then crashed. */
+    private function markSession(string $outcome): void
+    {
+        if ($this->session === null || $this->session === Sessions::CRASHED) {
+            return;
+        }
+
+        if ($outcome === Sessions::CRASHED || $this->session === Sessions::EXITED) {
+            $this->session = $outcome;
+        }
     }
 
     // ------------------------------------------------------------------ performance
@@ -314,7 +378,11 @@ class Magpie
             $event['contexts']['trace'] ??= ['trace_id' => $this->transaction['trace_id'], 'span_id' => $this->transaction['span_id']];
         }
 
-        $payload = $this->scope->applyTo($this->withContext($event + $this->base($id)));
+        // The trace context above must not replace the runtime and OS contexts, so contexts are merged, not added.
+        $base = $this->base($id);
+        $event['contexts'] = ($event['contexts'] ?? []) + $base['contexts'];
+
+        $payload = $this->scope->applyTo($this->withContext($event + $base));
 
         if (is_callable($before = $this->option('before_send'))) {
             $payload = $before($payload, $hint);

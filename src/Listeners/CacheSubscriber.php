@@ -27,7 +27,8 @@ final class CacheSubscriber
 
     private function crumb(string $operation, CacheEvent $event): void
     {
-        if (! $this->magpie->option('breadcrumbs.cache', true)) {
+        // The SDK's own session counters are not the application's cache traffic.
+        if (! $this->magpie->option('breadcrumbs.cache', true) || str_starts_with((string) $event->key, 'magpie:')) {
             return;
         }
 

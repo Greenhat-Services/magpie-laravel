@@ -26,7 +26,11 @@ final class HttpTransport implements Transport
     public function send(array $payload): bool
     {
         $this->lastError = null;
-        $path = ($payload['type'] ?? 'event') === 'transaction' ? 'transactions' : 'events';
+        $path = match ($payload['type'] ?? 'event') {
+            'transaction' => 'transactions',
+            'sessions' => 'sessions',
+            default => 'events',
+        };
         $body = Payload::encode($payload);
 
         if ($body === null) {

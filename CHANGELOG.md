@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- Crash-free sessions: web requests are counted as sessions (clean, errored or crashed by an uncaught exception) and sent to Magpie as one summary per minute. Needs a release and Magpie with session support. Turn off with `MAGPIE_SESSIONS=false`.
+- Fix: an error raised inside a traced request lost its `runtime` and `os` contexts, so Magpie showed "php" and "Unknown".
+
 ## 0.1.1
 
 - Allow Guzzle 8 (`guzzlehttp/guzzle` `^7.8.2|^8.0`) so the package installs in apps that already use it. CI now tests both ends of the range.
