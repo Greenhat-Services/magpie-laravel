@@ -1,0 +1,50 @@
+{
+    "name": "greenhat-services/magpie-laravel",
+    "description": "Magpie error tracking and performance monitoring for Laravel.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "magpie", "error-tracking", "exceptions", "monitoring", "performance"],
+    "require": {
+        "php": "^8.2",
+        "guzzlehttp/guzzle": "^7.8",
+        "laravel/framework": "^11.0|^12.0|^13.0",
+        "monolog/monolog": "^3.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Magpie\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Magpie\\Laravel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Magpie\\Laravel\\ServiceProvider"
+            ],
+            "aliases": {
+                "Magpie": "Magpie\\Laravel\\Facades\\Magpie"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "pint --test",
+        "analyse": "phpstan analyse",
+        "check": ["@lint", "@analyse", "@test"]
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
