@@ -6,7 +6,7 @@
     "keywords": ["laravel", "magpie", "error-tracking", "exceptions", "monitoring", "performance"],
     "require": {
         "php": "^8.2",
-        "guzzlehttp/guzzle": "^7.8",
+        "guzzlehttp/guzzle": "^7.8.2|^8.0",
         "laravel/framework": "^11.0|^12.0|^13.0",
         "monolog/monolog": "^3.0"
     },

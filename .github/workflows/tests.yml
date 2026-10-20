@@ -43,3 +43,23 @@ jobs:
         run: composer config policy.advisories.block false
       - run: composer update --prefer-dist --no-interaction
       - run: vendor/bin/phpunit
+
+  guzzle:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        guzzle: ['7.8.2', '8.*']
+    name: Guzzle ${{ matrix.guzzle }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - run: composer require "guzzlehttp/guzzle:${{ matrix.guzzle }}" --no-interaction --no-update
+      # Old Guzzle releases carry advisories; this job only checks that the package works across the supported range.
+      - run: composer config policy.advisories.block false
+      - run: composer update --prefer-dist --no-interaction --with-all-dependencies
+      - run: composer show guzzlehttp/guzzle | grep "^versions"
+      - run: vendor/bin/phpunit
