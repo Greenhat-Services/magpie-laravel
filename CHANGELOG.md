@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+Security hardening.
+
+- Delivery no longer follows redirects, so the DSN key and event body cannot be forwarded to another host.
+- Plain `http://` DSNs are rejected unless the host is local (`localhost`, `127.0.0.1`, `::1`, `*.test`, `*.localhost`).
+- Database error messages are redacted: the quoted SQL values and duplicate-entry values are removed.
+- `before_send` now also runs for transactions.
+- URL paths are scrubbed (long opaque segments and anything after `reset`, `token`, `invite` and similar), as are cache keys containing emails or credential-like names, and SQL bindings for statements touching credential-like columns.
+- `trace_propagation_targets` now defaults to your `APP_URL` host instead of `*`. Set it to `['*']` to restore the old behaviour.
+- A "sampled" flag in an incoming `magpie-trace` header no longer forces tracing; set `MAGPIE_TRUST_INCOMING_TRACE=true` to trust it.
+- Queued delivery jobs are encrypted at rest (`ShouldBeEncrypted`).
+- A `.git/HEAD` ref that escapes the git directory is ignored when detecting the release.
 ## 0.2.0
 
 - Crash-free sessions: web requests are counted as sessions (clean, errored or crashed by an uncaught exception) and sent to Magpie as one summary per minute. Needs a release and Magpie with session support. Turn off with `MAGPIE_SESSIONS=false`.

@@ -50,6 +50,27 @@ class TracingTest extends TestCase
         $this->assertSame(PHP_OS_FAMILY, $event['contexts']['os']['name']);
     }
 
+    public function test_the_trace_header_is_not_sent_to_third_parties_by_default(): void
+    {
+        Http::fake();
+
+        $this->magpie()->startTransaction('GET /x');
+        Http::get('https://third-party.test/b');
+
+        Http::assertSent(fn (ClientRequest $r) => ! $r->hasHeader(TraceHeader::NAME));
+    }
+
+    public function test_an_incoming_sampled_flag_cannot_force_tracing_unless_trusted(): void
+    {
+        config()->set('magpie.traces_sample_rate', 0.0000001);
+        $this->app->forgetInstance(Magpie::class);
+
+        $this->assertFalse($this->magpie()->startTransaction('GET /x', 'http.server', ['trace_id' => str_repeat('a', 32), 'span_id' => str_repeat('b', 16), 'sampled' => null]));
+
+        $this->withHeader(TraceHeader::NAME, str_repeat('a', 32).'-'.str_repeat('b', 16).'-1')->get('/ok')->assertOk();
+        $this->assertSame([], $this->transactions());
+    }
+
     public function test_an_upstream_unsampled_decision_is_respected(): void
     {
         $this->withHeader(TraceHeader::NAME, str_repeat('a', 32).'-'.str_repeat('b', 16).'-0')->get('/ok')->assertOk();
@@ -57,6 +78,12 @@ class TracingTest extends TestCase
         $this->assertSame([], $this->transactions());
     }
 
+    protected function propagateEverywhere($app): void
+    {
+        $app['config']->set('magpie.trace_propagation_targets', ['*']);
+    }
+
+    #[DefineEnvironment('propagateEverywhere')]
     public function test_http_client_calls_become_spans_and_breadcrumbs_and_carry_the_trace(): void
     {
         Http::fake(['api.example.com/*' => Http::response('created', 201)]);

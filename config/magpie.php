@@ -81,8 +81,13 @@ return [
     // invokable class or [Class::class, 'method'] rather than a closure so `config:cache` works.
     'before_send' => null,
 
-    // Hosts (or "*") that receive the magpie-trace header on outgoing Laravel HTTP client requests.
-    'trace_propagation_targets' => ['*'],
+    // Hosts (or "*") that receive the magpie-trace header on outgoing Laravel HTTP client requests. Defaults
+    // to your own APP_URL host so third parties never see your trace ids.
+    'trace_propagation_targets' => array_values(array_filter([parse_url((string) env('APP_URL'), PHP_URL_HOST) ?: null])),
+
+    // Continue the sampling decision of an incoming magpie-trace header that says "sampled". Leave off unless
+    // every caller is one of your own services; otherwise anyone can force tracing by sending the header.
+    'trust_incoming_trace' => (bool) env('MAGPIE_TRUST_INCOMING_TRACE', false),
 
     'breadcrumbs' => [
         'max' => 100,

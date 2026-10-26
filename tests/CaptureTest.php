@@ -3,6 +3,7 @@
 namespace Magpie\Laravel\Tests;
 
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -10,6 +11,7 @@ use Magpie\Laravel\Facades\Magpie as MagpieFacade;
 use Magpie\Laravel\Integration;
 use Magpie\Laravel\Magpie;
 use Magpie\Laravel\Scope;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use RuntimeException;
 
 class CaptureTest extends TestCase
@@ -110,6 +112,48 @@ class CaptureTest extends TestCase
         $this->magpie()->captureMessage('keep');
 
         $this->assertSame(['seen' => '1'], $this->lastEvent()['tags']);
+    }
+
+    public function test_before_send_also_applies_to_transactions(): void
+    {
+        config()->set('magpie.before_send', fn (array $event) => ($event['type'] ?? '') === 'transaction' ? null : $event);
+        $this->app->forgetInstance(Magpie::class);
+
+        $this->magpie()->startTransaction('GET /x');
+        $this->assertNull($this->magpie()->finishTransaction());
+    }
+
+    public function test_database_error_values_are_removed_from_exception_messages(): void
+    {
+        $this->magpie()->captureException(new Exception("SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'a@b.test' for key 'users_email_unique' (Connection: mysql, SQL: insert into users (email) values (a@b.test))"));
+        $value = $this->lastEvent()['exception']['values'][0]['value'];
+
+        $this->assertStringNotContainsString('a@b.test', $value);
+        $this->assertStringContainsString('users_email_unique', $value);
+    }
+
+    protected function withBindings($app): void
+    {
+        $app['config']->set('magpie.breadcrumbs.sql_bindings', true);
+    }
+
+    #[DefineEnvironment('withBindings')]
+    public function test_cache_keys_and_sql_bindings_are_scrubbed(): void
+    {
+        config()->set('database.default', 'testing');
+        config()->set('database.connections.testing', ['driver' => 'sqlite', 'database' => ':memory:']);
+        DB::select('select ? as a', ['plain']);
+        DB::select('select ? as password', ['hunter2']);
+        Cache::get('profile:a@b.test');
+        Cache::get('reset_token:42');
+
+        $this->magpie()->captureMessage('after');
+        $json = json_encode($this->lastEvent()['breadcrumbs']);
+
+        $this->assertStringContainsString('plain', $json);
+        $this->assertStringNotContainsString('hunter2', $json);
+        $this->assertStringNotContainsString('a@b.test', $json);
+        $this->assertStringNotContainsString('reset_token:42', $json);
     }
 
     public function test_logs_and_queries_become_breadcrumbs(): void

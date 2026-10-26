@@ -124,7 +124,8 @@ Each event becomes a `Magpie\Laravel\Jobs\SendPayload` job. The SDK never traces
 | `timeout` | `MAGPIE_TIMEOUT` | `3` | Seconds to wait for Magpie. |
 | `queue.*` | `MAGPIE_QUEUE`, `MAGPIE_QUEUE_CONNECTION`, `MAGPIE_QUEUE_NAME` | off | Deliver from a queue worker. |
 | `before_send` | | `null` | `callable(array $event, array $hint): ?array`; return null to drop. Use an invokable class or `[Class::class, 'method']` so `config:cache` works. |
-| `trace_propagation_targets` | | `['*']` | Hosts (exact or parent domain) that receive the `magpie-trace` header. |
+| `trace_propagation_targets` | | your `APP_URL` host | Hosts (exact or parent domain, or `*`) that receive the `magpie-trace` header. |
+| `trust_incoming_trace` | `MAGPIE_TRUST_INCOMING_TRACE` | `false` | Honour a "sampled" decision in an incoming `magpie-trace` header. Only enable when every caller is your own service. |
 | `breadcrumbs.*` | | on | `logs`, `sql_queries`, `sql_bindings` (off), `http_client`, `cache`, `queue_info`, `command_info`, `max` (100). |
 | `limits.*` | | `8192`, `100`, `100` | `string_length` in bytes, `spans` per transaction, `frames` per exception. |
 

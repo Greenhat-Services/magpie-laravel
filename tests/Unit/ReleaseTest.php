@@ -39,6 +39,16 @@ class ReleaseTest extends TestCase
         $this->assertSame(str_repeat('c', 40), Release::detect($this->dir));
     }
 
+    public function test_a_ref_that_escapes_the_git_directory_is_ignored(): void
+    {
+        file_put_contents($this->dir.'/secret', str_repeat('d', 40));
+        file_put_contents($this->dir.'/.git/HEAD', "ref: refs/../../secret\n");
+
+        $this->assertNull(Release::detect($this->dir));
+
+        unlink($this->dir.'/secret');
+    }
+
     public function test_it_is_null_without_a_checkout(): void
     {
         $this->assertNull(Release::detect($this->dir.'/nowhere'));

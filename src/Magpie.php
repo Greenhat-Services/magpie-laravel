@@ -357,6 +357,14 @@ class Magpie
         $payload = $this->scope->applyTo($this->withContext($payload));
         unset($payload['breadcrumbs']);
 
+        if (is_callable($before = $this->option('before_send'))) {
+            $payload = $before($payload, ['transaction' => $t['name']]);
+
+            if (! is_array($payload)) {
+                return null;
+            }
+        }
+
         $this->buffer[] = Payload::limit($payload, $this->maxStringLength());
 
         return $id;
@@ -463,7 +471,7 @@ class Magpie
         for ($e = $exception; $e !== null; $e = $e->getPrevious()) {
             $values[] = [
                 'type' => $e::class,
-                'value' => $e->getMessage(),
+                'value' => RequestContext::scrubExceptionMessage($e->getMessage()),
                 'mechanism' => ['type' => $hint['mechanism'] ?? 'generic', 'handled' => $hint['handled'] ?? true],
                 'stacktrace' => ['frames' => $stacktrace->frames($e)],
             ];

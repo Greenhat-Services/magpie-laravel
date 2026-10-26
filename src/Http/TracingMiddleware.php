@@ -21,10 +21,27 @@ class TracingMiddleware
         $this->magpie->startTransaction(
             $request->method().' /'.ltrim($request->path(), '/'),
             'http.server',
-            TraceHeader::parse($request->header(TraceHeader::NAME)),
+            $this->parent($request),
         );
 
         return $next($request);
+    }
+
+    /**
+     * An unsampled upstream decision is always honoured. A sampled one is only trusted with `trust_incoming_trace`,
+     * since anyone can send the header and force tracing.
+     *
+     * @return array{trace_id: string, span_id: string, sampled: bool|null}|null
+     */
+    private function parent(Request $request): ?array
+    {
+        $parent = TraceHeader::parse($request->header(TraceHeader::NAME));
+
+        if ($parent !== null && $parent['sampled'] === true && ! $this->magpie->option('trust_incoming_trace', false)) {
+            $parent['sampled'] = null;
+        }
+
+        return $parent;
     }
 
     public function terminate(Request $request, Response $response): void

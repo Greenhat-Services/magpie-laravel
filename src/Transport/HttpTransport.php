@@ -20,7 +20,7 @@ final class HttpTransport implements Transport
 
     public function __construct(private readonly Dsn $dsn, float $timeout = 3.0, ?ClientInterface $http = null)
     {
-        $this->http = $http ?? new Client(['timeout' => $timeout, 'connect_timeout' => min($timeout, 2.0), 'http_errors' => false]);
+        $this->http = $http ?? new Client(['timeout' => $timeout, 'connect_timeout' => min($timeout, 2.0), 'http_errors' => false, 'allow_redirects' => false]);
     }
 
     public function send(array $payload): bool
@@ -50,7 +50,7 @@ final class HttpTransport implements Transport
         }
 
         try {
-            $response = $this->http->request('POST', $this->dsn->endpoint($path), ['headers' => $headers, 'body' => $body, 'http_errors' => false]);
+            $response = $this->http->request('POST', $this->dsn->endpoint($path), ['headers' => $headers, 'body' => $body, 'http_errors' => false, 'allow_redirects' => false]);
         } catch (Throwable $e) {
             // Monitoring must never break the application.
             $this->lastError = $e->getMessage();

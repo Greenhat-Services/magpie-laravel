@@ -4,6 +4,7 @@ namespace Magpie\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Magpie\Laravel\Transport\HttpTransport;
 use Magpie\Laravel\Transport\QueuedTransport;
@@ -12,7 +13,7 @@ use Magpie\Laravel\Transport\Transport;
 /**
  * Delivers one buffered payload from a queue worker. The SDK never traces or reports this job.
  */
-final class SendPayload implements ShouldQueue
+final class SendPayload implements ShouldBeEncrypted, ShouldQueue
 {
     use Queueable;
 

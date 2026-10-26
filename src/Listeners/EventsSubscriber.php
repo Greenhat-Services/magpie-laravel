@@ -93,7 +93,7 @@ final class EventsSubscriber
                 'data' => array_filter([
                     'connection' => $event->connectionName,
                     'time_ms' => round($event->time, 2),
-                    'bindings' => $this->magpie->option('breadcrumbs.sql_bindings', false) ? $event->bindings : null,
+                    'bindings' => $this->magpie->option('breadcrumbs.sql_bindings', false) ? RequestContext::scrubBindings($event->sql, $event->bindings) : null,
                 ], fn ($v) => $v !== null),
             ]));
         }

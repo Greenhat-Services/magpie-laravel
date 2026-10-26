@@ -30,6 +30,12 @@ final class RequestContext
     /** Query and log-context keys whose values are replaced with [Filtered]. */
     private const SENSITIVE_PARAMS = '/(pass(word|wd)?|secret|token|api[_-]?key|credential|session|csrf|xsrf|otp|cvv|ssn|signature|private[_-]?key)|^(auth|authorization|sig|pin|code|key|card(_?number)?|credit_?card|cc)$/i';
 
+    /** Path segments after one of these words are single-use secrets (reset links, invitations, signed URLs). */
+    private const SECRET_SEGMENT_PREFIX = '/^(token|reset|verify|confirm|invite|invitation|activate|password|signed|unsubscribe|magic|login|auth)s?$/i';
+
+    /** SQL that touches credential-like columns; its bindings are never sent. */
+    private const SENSITIVE_SQL = '/(pass(word|wd)?|secret|token|api[_-]?key|credential|session|otp|cvv|ssn|signature|private[_-]?key|card)/i';
+
     /** @return array<string, mixed> */
     public static function resolve(Application $app, bool $pii): array
     {
@@ -77,7 +83,7 @@ final class RequestContext
         parse_str($request->getQueryString() ?? '', $query);
 
         return array_filter([
-            'url' => $request->url(),
+            'url' => self::scrubUrl($request->url()),
             'method' => $request->method(),
             'query_string' => $query ? http_build_query(self::scrub($query)) : null,
             'headers' => $headers,
@@ -117,7 +123,7 @@ final class RequestContext
         $rebuilt .= isset($parts['user']) ? '[Filtered]@' : '';
         $rebuilt .= $parts['host'] ?? '';
         $rebuilt .= isset($parts['port']) ? ':'.$parts['port'] : '';
-        $rebuilt .= $parts['path'] ?? '';
+        $rebuilt .= isset($parts['path']) ? self::scrubPath($parts['path']) : '';
 
         if (isset($parts['query'])) {
             parse_str($parts['query'], $query);
@@ -125,6 +131,52 @@ final class RequestContext
         }
 
         return $rebuilt.(isset($parts['fragment']) ? '#'.$parts['fragment'] : '');
+    }
+
+    /** Replace path segments that look like secrets: long opaque strings, or whatever follows `reset`, `token`, `invite` and similar. */
+    public static function scrubPath(string $path): string
+    {
+        $segments = explode('/', $path);
+
+        foreach ($segments as $i => $segment) {
+            $afterSecretWord = $i > 0 && preg_match(self::SECRET_SEGMENT_PREFIX, $segments[$i - 1]) && ! ctype_digit($segment) && ! preg_match(self::SECRET_SEGMENT_PREFIX, $segment);
+
+            if ($segment !== '' && ($afterSecretWord || (preg_match('/^[A-Za-z0-9_-]{24,}$/', $segment) && preg_match('/\d/', $segment)))) {
+                $segments[$i] = '[Filtered]';
+            }
+        }
+
+        return implode('/', $segments);
+    }
+
+    /** Emails and credential-looking keys are replaced; everything else in an identifier is kept. */
+    public static function scrubKey(string $key): string
+    {
+        if (preg_match(self::SENSITIVE_PARAMS, $key)) {
+            return '[Filtered]';
+        }
+
+        return (string) preg_replace('/[^\s:|,]+@[^\s:|,]+/', '[Filtered]', $key);
+    }
+
+    /** Database errors quote the failing SQL with its values, and unique violations quote the duplicate value. */
+    public static function scrubExceptionMessage(string $message): string
+    {
+        $message = (string) preg_replace('/\bSQL: .*(?=\)\s*$)/s', 'SQL: [Filtered]', $message);
+        $message = (string) preg_replace("/Duplicate entry '.*?' for key/s", "Duplicate entry '[Filtered]' for key", $message);
+
+        return (string) preg_replace('/Key \(([^)]*)\)=\(.*?\) (already exists|is not present)/s', 'Key ($1)=([Filtered]) $2', $message);
+    }
+
+    /**
+     * Bindings are only safe to send for statements that do not touch credential-like columns.
+     *
+     * @param  array<array-key, mixed>  $bindings
+     * @return array<array-key, mixed>|string
+     */
+    public static function scrubBindings(string $sql, array $bindings): array|string
+    {
+        return preg_match(self::SENSITIVE_SQL, $sql) ? '[Filtered]' : $bindings;
     }
 
     /** @return array<string, mixed>|null */

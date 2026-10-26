@@ -9,6 +9,7 @@ use Illuminate\Cache\Events\KeyForgotten;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Contracts\Events\Dispatcher;
 use Magpie\Laravel\Magpie;
+use Magpie\Laravel\RequestContext;
 
 /**
  * Cache reads and writes as breadcrumbs, so an error can be read alongside what was cached.
@@ -35,7 +36,7 @@ final class CacheSubscriber
         $this->magpie->addBreadcrumb([
             'type' => 'default',
             'category' => 'cache',
-            'message' => $operation.' '.$event->key,
+            'message' => $operation.' '.RequestContext::scrubKey((string) $event->key),
             'data' => array_filter(['store' => $event->storeName ?? null, 'tags' => $event->tags ?: null], fn ($v) => $v !== null),
         ]);
     }

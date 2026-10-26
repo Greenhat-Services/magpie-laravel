@@ -72,6 +72,13 @@ class SecurityTest extends TestCase
         );
     }
 
+    public function test_secrets_in_url_paths_are_scrubbed(): void
+    {
+        $this->assertSame('https://app.test/password/reset/[Filtered]', RequestContext::scrubUrl('https://app.test/password/reset/abc'));
+        $this->assertSame('https://app.test/files/[Filtered]/view', RequestContext::scrubUrl('https://app.test/files/'.str_repeat('a1', 16).'/view'));
+        $this->assertSame('https://app.test/users/42/orders', RequestContext::scrubUrl('https://app.test/users/42/orders'));
+    }
+
     public function test_log_context_is_scrubbed_in_breadcrumbs_and_log_channel_events(): void
     {
         Log::info('Login attempt', ['email' => 'a@b.test', 'password' => 'hunter2']);

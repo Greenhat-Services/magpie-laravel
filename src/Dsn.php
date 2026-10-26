@@ -26,6 +26,11 @@ final class Dsn
             throw new InvalidArgumentException('The Magpie DSN is invalid. Expected https://<key>@<host>/<project>.');
         }
 
+        // Events carry stack traces and request details, so they only travel unencrypted to a local ingest.
+        if ($parts['scheme'] === 'http' && ! self::isLocal($parts['host'])) {
+            throw new InvalidArgumentException('The Magpie DSN must use https unless the host is local.');
+        }
+
         $segments = array_values(array_filter(explode('/', $parts['path'] ?? ''), fn ($s) => $s !== ''));
         $projectId = array_pop($segments);
 
@@ -41,6 +46,13 @@ final class Dsn
             $projectId,
             $segments ? '/'.implode('/', $segments) : '',
         );
+    }
+
+    private static function isLocal(string $host): bool
+    {
+        $host = strtolower(trim($host, '[]'));
+
+        return $host === 'localhost' || $host === '::1' || $host === '127.0.0.1' || str_ends_with($host, '.localhost') || str_ends_with($host, '.test');
     }
 
     public function endpoint(string $path = 'events'): string

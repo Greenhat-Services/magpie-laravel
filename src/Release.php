@@ -29,6 +29,11 @@ final class Release
         }
 
         $ref = substr($head, 5);
+
+        // A ref is a path under .git; anything else (such as `../`) is not read.
+        if (! preg_match('~^refs/[A-Za-z0-9._/-]+$~', $ref) || str_contains($ref, '..')) {
+            return null;
+        }
         $sha = self::read($gitDir.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $ref));
 
         if ($sha !== null && self::isSha($sha)) {

@@ -31,6 +31,18 @@ class HttpTransportTest extends TestCase
         $this->assertSame('hi', json_decode((string) $history[0]['request']->getBody(), true)['message']);
     }
 
+    public function test_redirects_are_not_followed_so_the_key_and_payload_stay_with_the_ingest_host(): void
+    {
+        $history = [];
+        $stack = HandlerStack::create(new MockHandler([new Response(307, ['Location' => 'https://evil.example.com/steal']), new Response(200)]));
+        $stack->push(Middleware::history($history));
+        $transport = new HttpTransport(Dsn::parse('https://abc123@ingest.magpie.example.com/7'), 3.0, new Client(['handler' => $stack, 'allow_redirects' => true]));
+
+        $this->assertFalse($transport->send(['event_id' => 'e1']));
+        $this->assertCount(1, $history);
+        $this->assertSame('Magpie responded with HTTP 307.', $transport->lastError());
+    }
+
     public function test_network_failures_never_throw(): void
     {
         $stack = HandlerStack::create(new MockHandler([new ConnectException('down', new Request('POST', 'https://x'))]));

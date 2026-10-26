@@ -25,6 +25,14 @@ class DsnTest extends TestCase
         $this->assertSame('http://localhost:8080/ingest/api/9/events', $dsn->endpoint());
     }
 
+    public function test_plain_http_is_only_allowed_for_local_hosts(): void
+    {
+        $this->assertSame('app.test', Dsn::parse('http://key@app.test/1')->host);
+
+        $this->expectException(InvalidArgumentException::class);
+        Dsn::parse('http://key@ingest.magpie.example.com/1');
+    }
+
     public function test_it_rejects_invalid_dsns(): void
     {
         $this->expectException(InvalidArgumentException::class);
