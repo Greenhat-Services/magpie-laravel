@@ -7,7 +7,7 @@ composer install
 composer check   # pint --test, phpstan analyse, phpunit
 ```
 
-CI runs the same three commands plus `composer audit`, across PHP 8.2 to 8.4 and Laravel 11 to 13. To test against one Laravel version locally:
+CI runs the same three commands plus `composer audit`, across PHP 8.2 to 8.4 and Laravel 12 and 13. To test against one Laravel version locally:
 
 ```sh
 composer require "laravel/framework:12.*" --no-update && composer update

@@ -1,6 +1,6 @@
 # Magpie for Laravel
 
-Error tracking and performance monitoring for Laravel apps, reporting to Magpie. Supports Laravel 11, 12 and 13 on PHP 8.2+.
+Error tracking and performance monitoring for Laravel apps, reporting to Magpie. Supports Laravel 12 (12.69+) and 13 (13.30+) on PHP 8.2+.
 
 ## Install
 

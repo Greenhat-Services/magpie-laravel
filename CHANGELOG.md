@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Require `laravel/framework` `^12.69|^13.30`, the first releases with the fixes for three published advisories (CRLF injection in the email rule, signed URL path confusion, XSS in the debug page). Laravel 11 is dropped: it is end of life and was never patched.
+
 ## 0.3.0
 
 Security hardening.
