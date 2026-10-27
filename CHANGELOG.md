@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - Nothing is sent from the `local` environment any more, so errors on a laptop no longer appear in Magpie. Set `MAGPIE_DISABLED_ENVIRONMENTS=` (empty) to send from every environment, or list others, e.g. `local,testing`.
 
