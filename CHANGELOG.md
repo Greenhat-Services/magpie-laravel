@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - Platform reporting: the app tells Magpie its PHP, Laravel and package versions (Octane, Horizon, Livewire, Inertia, Filament) and the names of its database, cache, queue and session drivers, so Magpie can list what every application runs on. Versions and driver names only, never configuration values. Sent when it changes and at most once a day. Needs a Magpie with platform support. Turn off with `MAGPIE_PLATFORM=false`.
 
