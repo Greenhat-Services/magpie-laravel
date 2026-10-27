@@ -38,6 +38,14 @@ return [
         'store' => env('MAGPIE_SESSIONS_CACHE_STORE'),
     ],
 
+    // Tell Magpie what the app runs on (PHP, Laravel and a few package versions, plus the database, cache, queue and
+    // session driver names) so you can see every application's platform in one place. Names and versions only, never
+    // configuration values. Sent when it changes and at most once a day. `store` is the cache store that remembers it.
+    'platform' => [
+        'enabled' => (bool) env('MAGPIE_PLATFORM', true),
+        'store' => env('MAGPIE_PLATFORM_CACHE_STORE'),
+    ],
+
     // Attach the authenticated user and client IP addresses. Credentials and session headers are always removed.
     'send_default_pii' => (bool) env('MAGPIE_SEND_DEFAULT_PII', false),
 

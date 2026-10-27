@@ -116,6 +116,7 @@ Each event becomes a `Magpie\Laravel\Jobs\SendPayload` job. The SDK never traces
 | `release` | `MAGPIE_RELEASE` | git commit | Version string; falls back to the checkout's commit. |
 | `sample_rate` | `MAGPIE_SAMPLE_RATE` | `1.0` | Fraction of errors sent. |
 | `sessions.*` | `MAGPIE_SESSIONS`, `MAGPIE_SESSIONS_CACHE_STORE` | on | Count requests for crash-free sessions. `store` is the cache store holding the counts (default: your default store). |
+| `platform.*` | `MAGPIE_PLATFORM`, `MAGPIE_PLATFORM_CACHE_STORE` | on | Report PHP, Laravel and package versions and the database, cache, queue and session driver names. Never configuration values. `store` is the cache store that remembers what was sent. |
 | `traces_sample_rate` | `MAGPIE_TRACES_SAMPLE_RATE` | none | Fraction of requests, jobs and commands traced. |
 | `send_default_pii` | `MAGPIE_SEND_DEFAULT_PII` | `false` | Attach the user, client IP headers and `REMOTE_ADDR`. |
 | `ignore_exceptions` | | framework noise | Classes and interfaces never reported, subclasses included. |
@@ -139,6 +140,7 @@ This is the contract between the SDK and a Magpie server.
 - Errors carry `event_id`, `timestamp`, `platform`, `level`, `environment`, `release`, `server_name`, `exception.values[]` (`type`, `value`, `mechanism`, `stacktrace.frames[]` oldest first), `message`, `tags`, `extra`, `user`, `request`, `contexts`, `breadcrumbs`, `transaction` and `sdk`. An error raised inside a trace also carries `contexts.trace.trace_id` and `span_id`.
 - Transactions carry `type: "transaction"`, `transaction`, `start_timestamp`, `timestamp`, `contexts.trace` (`trace_id`, `span_id`, `parent_span_id` when continuing a trace, `op`, `status`, `http.status_code`, `dropped_spans` when the span cap was hit) and `spans[]` (`span_id`, `parent_span_id`, `op`, `description`, `start_timestamp`, `timestamp`, `data`).
 - Sessions are `POST .../sessions` with `type: "sessions"`, `release`, `environment`, `sdk` and `aggregates[]`: one `{minute, exited, errored, crashed}` per finished minute, where `minute` is the Unix time of the minute and the three counts are sessions that ended clean, with a handled error, or crashed by an uncaught exception. A minute is sent once.
+- The platform is `POST .../platform` with `type: "platform"`, `environment`, `sdk`, `components` (name to version, e.g. `php`, `laravel`, `octane`) and `drivers` (name to driver, e.g. `database: mysql`). It is sent when it changes and at most once a day.
 - Distributed tracing header `magpie-trace: <32 hex trace id>-<16 hex span id>-<0|1 sampled>`. The same value travels in queued job payloads under `magpie_trace`.
 
 Delivery never throws. `Magpie::flush()` returns false when any payload was rejected.

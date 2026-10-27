@@ -29,6 +29,7 @@ final class HttpTransport implements Transport
         $path = match ($payload['type'] ?? 'event') {
             'transaction' => 'transactions',
             'sessions' => 'sessions',
+            'platform' => 'platform',
             default => 'events',
         };
         $body = Payload::encode($payload);

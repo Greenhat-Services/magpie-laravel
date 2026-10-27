@@ -54,12 +54,14 @@ class Magpie
      * @param  array<string, mixed>  $options  The config/magpie.php array.
      * @param  Closure(): array<string, mixed>|null  $contextResolver  Returns request, user and contexts to merge into each event.
      * @param  Sessions|null  $sessions  Counts requests for crash-free session reporting. Null disables it.
+     * @param  Platform|null  $platform  Reports the versions and driver names the app runs on. Null disables it.
      */
     public function __construct(
         private readonly array $options,
         private readonly ?Transport $transport,
         private readonly ?Closure $contextResolver = null,
         private readonly ?Sessions $sessions = null,
+        private readonly ?Platform $platform = null,
     ) {
         $this->scope = new Scope;
         $this->reported = new WeakMap;
@@ -185,6 +187,10 @@ class Magpie
         }
 
         if ($this->transport !== null && $this->sessions !== null && ! $this->sessions->flush($this->transport)) {
+            $delivered = false;
+        }
+
+        if ($this->transport !== null && $this->platform !== null && ! $this->platform->flush($this->transport)) {
             $delivered = false;
         }
 

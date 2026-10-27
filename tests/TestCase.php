@@ -24,6 +24,8 @@ abstract class TestCase extends Orchestra
         $app['config']->set('magpie.dsn', 'https://abc123@ingest.magpie.example.com/7');
         $app['config']->set('magpie.in_app_include', [__DIR__]);
         $app['config']->set('magpie.traces_sample_rate', 1.0);
+        // Off by default so tests that count payloads see only what they trigger. PlatformTest turns it on.
+        $app['config']->set('magpie.platform.enabled', false);
     }
 
     protected function magpie(): Magpie

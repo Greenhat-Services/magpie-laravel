@@ -45,7 +45,7 @@ class ServiceProvider extends BaseServiceProvider
             // Octane swaps the container per request, so always read the current one.
             $current = fn (): Application => ($instance = Container::getInstance()) instanceof Application ? $instance : $app;
 
-            return new Magpie($options, $this->transport($app, $options), fn () => RequestContext::resolve($current(), $pii), $this->sessions($app, $options));
+            return new Magpie($options, $this->transport($app, $options), fn () => RequestContext::resolve($current(), $pii), $this->sessions($app, $options), $this->platform($app, $options));
         });
 
         $this->app->alias(Magpie::class, 'magpie');
@@ -146,6 +146,26 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         return new Sessions($cache, $release, (string) ($options['environment'] ?? 'production'));
+    }
+
+    /**
+     * Reports the versions and driver names the app runs on. Off when disabled.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    private function platform(Application $app, array $options): ?Platform
+    {
+        if (! ($options['platform']['enabled'] ?? true)) {
+            return null;
+        }
+
+        try {
+            $cache = $app['cache']->store($options['platform']['store'] ?? null);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return new Platform($cache, fn () => Platform::snapshot($app->version(), (array) $app['config']->all()), (string) ($options['environment'] ?? 'production'));
     }
 
     /** @param  array<string, mixed>  $options */
