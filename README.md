@@ -113,6 +113,7 @@ Each event becomes a `Magpie\Laravel\Jobs\SendPayload` job. The SDK never traces
 |---|---|---|---|
 | `dsn` | `MAGPIE_LARAVEL_DSN` | none | Empty or invalid disables the SDK. |
 | `environment` | `MAGPIE_ENVIRONMENT` | `APP_ENV` | |
+| `disabled_environments` | `MAGPIE_DISABLED_ENVIRONMENTS` | `local` | Comma separated environments that send nothing. Set it empty to send from `local` too. |
 | `release` | `MAGPIE_RELEASE` | git commit | Version string; falls back to the checkout's commit. |
 | `sample_rate` | `MAGPIE_SAMPLE_RATE` | `1.0` | Fraction of errors sent. |
 | `sessions.*` | `MAGPIE_SESSIONS`, `MAGPIE_SESSIONS_CACHE_STORE` | on | Count requests for crash-free sessions. `store` is the cache store holding the counts (default: your default store). |

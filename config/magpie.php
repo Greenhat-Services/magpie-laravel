@@ -17,6 +17,10 @@ return [
 
     'environment' => env('MAGPIE_ENVIRONMENT', env('APP_ENV', 'production')),
 
+    // Environments that send nothing, so a laptop's errors never reach Magpie. Comma separated in the env var;
+    // set it empty (MAGPIE_DISABLED_ENVIRONMENTS=) to send from every environment.
+    'disabled_environments' => array_values(array_filter(array_map('trim', explode(',', (string) env('MAGPIE_DISABLED_ENVIRONMENTS', 'local'))))),
+
     // A version string so issues can be tied to a release. When empty, the git commit of the
     // deployed checkout is used if a .git directory exists.
     'release' => env('MAGPIE_RELEASE'),

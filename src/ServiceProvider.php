@@ -171,6 +171,13 @@ class ServiceProvider extends BaseServiceProvider
     /** @param  array<string, mixed>  $options */
     private function transport(Application $app, array $options): ?Transport
     {
+        // Nothing leaves a machine in a disabled environment (`local` by default): it is noise in Magpie.
+        $disabled = array_map('strtolower', (array) ($options['disabled_environments'] ?? []));
+
+        if (in_array(strtolower((string) ($options['environment'] ?? '')), $disabled, true)) {
+            return null;
+        }
+
         // A bound transport wins, which is how tests (and custom delivery) replace HTTP.
         if ($app->bound(Transport::class)) {
             return $app->make(Transport::class);
